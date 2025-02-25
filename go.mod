@@ -1,4 +1,4 @@
-module swarm-tunnel
+module github.com/guojianyu/swarm-tunnel
 
 go 1.16
 
