@@ -8,20 +8,77 @@ import (
 	"sync"
 	"time"
 
+	"k8s.io/klog"
+
+	"github.com/gorilla/mux"
 	uuid "github.com/satori/go.uuid"
 )
-
-//上层流断线，代理服务向下层流客户端发送关闭session
-//下层流断线，代理服务向上层流客户端发送连接关闭。
-//没有断线的异常情况，
-//代理服务：定时发送session心跳，如果没有心跳则断开上层流的连接
-//客户端：定时向代理服务发送pong信号，没有响应则关闭session。
 
 type Client tunnelPkg.Client
 type Session tunnelPkg.Session
 
-// type ClientMap tunnelPkg.ClientMap
-// type SessionMap tunnelPkg.SessionMap
+type Hub struct {
+	DownStreamClients sync.Map
+	// Register requests from the clients.
+	// Unregister requests from clients.
+	DownStreamRegister        chan *Client
+	DownStreamUnregister      chan *Client
+	SessionRegister           chan *Session
+	SessionUnregister         chan *Session
+	Sessions                  sync.Map
+	registerClientCallback    func(string)
+	unregisterClientCallback  func(string)
+	registerSessionCallback   func(string)
+	unregisterSessionCallback func(string)
+}
+type TunnelServer struct {
+	hub       *Hub
+	webserver *tunnelPkg.WebServer
+	Router    *mux.Router
+}
+
+func (ts *TunnelServer) WithTLS(cafile, certFile, keyFile string) {
+	ts.webserver.EnableTLS = true
+	ts.webserver.CaFile = cafile
+	ts.webserver.CertFile = certFile
+	ts.webserver.KeyFile = keyFile
+}
+
+func (ts *TunnelServer) SetRegisterClientCallback(cb func(string)) {
+	ts.hub.registerClientCallback = cb
+}
+
+func (ts *TunnelServer) SetUnregisterClientCallback(cb func(string)) {
+	ts.hub.unregisterClientCallback = cb
+}
+func (ts *TunnelServer) SetRegisterSessionCallback(cb func(string)) {
+	ts.hub.registerSessionCallback = cb
+}
+
+func (ts *TunnelServer) SetUnregisterSessionCallback(cb func(string)) {
+	ts.hub.unregisterSessionCallback = cb
+}
+
+func NewHub() *Hub {
+	return &Hub{
+		DownStreamRegister:   make(chan *Client),
+		DownStreamUnregister: make(chan *Client),
+		SessionRegister:      make(chan *Session),
+		SessionUnregister:    make(chan *Session),
+		DownStreamClients:    sync.Map{},
+		Sessions:             sync.Map{},
+	}
+}
+
+func NewTunnelServer(addr string) *TunnelServer {
+	return &TunnelServer{
+		hub: NewHub(),
+		webserver: &tunnelPkg.WebServer{
+			Addr: addr,
+		},
+		Router: mux.NewRouter(),
+	}
+}
 
 func (s *Session) SetStatus(status tunnelPkg.SessionStatus) {
 	s.Mu.Lock()
@@ -53,27 +110,9 @@ func (s *Session) GetAnnotaion(annotation string) string {
 	return s.Annotation
 }
 
-func (server *TunnelServer) SessionIDGenarator() string {
+func (server *TunnelServer) sessionIDGenarator() string {
 	return uuid.NewV4().String()
 
-}
-
-type TunnelServer struct {
-	hub *Hub
-}
-
-type Hub struct {
-	UpStreamClients   sync.Map
-	DownStreamClients sync.Map
-	// Register requests from the clients.
-	// Unregister requests from clients.
-	UpStreamRegister     chan *Client
-	UpStreamUnregister   chan *Client
-	DownStreamRegister   chan *Client
-	DownStreamUnregister chan *Client
-	SessionRegister      chan *Session
-	SessionUnregister    chan *Session
-	Sessions             sync.Map
 }
 
 func (client *Client) WsLockWriteMessage(messageType int, data []byte) error {
@@ -83,10 +122,32 @@ func (client *Client) WsLockWriteMessage(messageType int, data []byte) error {
 	return client.Socket.WriteMessage(messageType, data)
 }
 
-func (client *Client) Close() {
-	if client != nil {
+func (client *Client) close() {
+	client.Mu.Lock()
+	defer client.Mu.Unlock()
+	if !client.IsClosed {
+		close(client.Send)
+		client.IsClosed = true
+	}
+	if client.Socket != nil {
 		client.Socket.Close()
 	}
+
+}
+
+// close upper stream if session closure
+func (s *Session) close() {
+	klog.V(2).Infof("session:%v is closed", s.SessionID)
+	s.upAgent().Mu.Lock()
+	defer s.upAgent().Mu.Unlock()
+	if !s.upAgent().IsClosed {
+		close(s.upAgent().Send)
+		s.upAgent().IsClosed = true
+	}
+	if s.upAgent().Socket != nil {
+		s.upAgent().Socket.Close()
+	}
+
 }
 
 func converseClient(c interface{}) (client *Client, ok bool) {

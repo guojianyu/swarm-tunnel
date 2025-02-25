@@ -39,8 +39,9 @@ const (
 const (
 	ProtocolSSH       = "ssh"
 	ProtocolHttp      = "http"
+	ProtocolFile      = "file"
 	ProtocolWebsocket = "ws"
-	//containers
+	//kubernetes containers
 	ProtocolExec = "exec"
 	ProtocolLogs = "logs"
 )
@@ -50,11 +51,11 @@ type SessionStatus string
 const (
 	SessionConnecting       SessionStatus = "connecting"
 	SessionConnected        SessionStatus = "connected"
-	SessionUpstreamClosed   SessionStatus = "upstreamClosed"
-	SessionDownstreamClosed SessionStatus = "downstreamClosed"
-	SessionClosed           SessionStatus = "Closed"
-	SessionConnectFailed    SessionStatus = "connectFailed"
-	SessionProcessFailed    SessionStatus = "processFailed"
+	SessionUpstreamClosed   SessionStatus = "upstream closed"
+	SessionDownstreamClosed SessionStatus = "downstream closed"
+	SessionClosed           SessionStatus = "session closed"
+	SessionConnectFailed    SessionStatus = "connect failed"
+	SessionProcessFailed    SessionStatus = "process failed"
 )
 
 const (
@@ -62,7 +63,7 @@ const (
 	WriteWait = 10 * time.Second
 
 	// Time allowed to read the next pong message from the peer.
-	PongWait = 5 * time.Second
+	PongWait = 60 * time.Second
 
 	// Send pings to peer with this period. Must be less than pongWait.
 	PingPeriod = (PongWait * 9) / 10
@@ -77,10 +78,17 @@ const (
 	ServerInternalError string = "Service internal error"
 )
 
+type WebServer struct {
+	Addr      string
+	EnableTLS bool
+	CertFile  string
+	KeyFile   string
+	CaFile    string
+}
 type TunnelMessage struct {
-	SessionID   string       `json:"session,omitempty"` //仅仅ws连接需要提供session字段
-	Protocol    string       `json:"protocol"`          //必填 http,ws,ssh,exec,logs
-	MessageType int          `json:"action"`            //可以隐藏，通过websocket原生的消息类型区分
+	SessionID   string       `json:"session,omitempty"` //
+	Protocol    string       `json:"protocol"`          //
+	MessageType int          `json:"action"`
 	Payload     []byte       `json:"payload,omitempty"`
 	Ws          *Ws          `json:"ws,omitempty"`
 	SSH         *SSH         `json:"ssh,omitempty"`
@@ -95,8 +103,9 @@ type Ws struct {
 }
 
 type SSH struct {
-	IP       string `json:"ip,omitempty"` //127.0.0.1
-	UserName string `json:"username,omitempty"`
+	Host     string `json:"host,omitempty"` //e.g. 127.0.0.1
+	Port     string `json:"port,omitempty"`
+	User     string `json:"user,omitempty"`
 	Password string `json:"password,omitempty"`
 }
 
@@ -119,20 +128,21 @@ type HttpRequest struct {
 
 type HttpResponse struct {
 	Status      string              `json:"status,omitempty"`     // e.g. "200 OK"
-	StatusCode  int                 `json:"statusCode,omitempty"` // e.g. 200
+	StatusCode  int                 `json:"statusCode,omitempty"` // e.g. "200"
 	Proto       string              `json:"proto,omitempty"`      // e.g. "HTTP/1.0"
 	Header      map[string][]string `json:"header"`
 	Body        []byte              `json:"body,omitempty"`
 	ContentType string              `json:"contentType,omitempty"`
 }
 type Client struct {
-	Socket *websocket.Conn
-	Mu     sync.Mutex
-	//	Cancel context.CancelFunc
+	Socket   *websocket.Conn
+	Mu       sync.Mutex
+	IsClosed bool
 	Send     chan *TunnelMessage
 	ClientID string //downstream->clientID  upstream->sessionid
-	Cancel   context.CancelFunc
-	Context  context.Context
+	//	Cancel context.CancelFunc
+	Cancel  context.CancelFunc
+	Context context.Context
 }
 type Session struct {
 	SessionID  string
@@ -146,9 +156,46 @@ type Session struct {
 	Mu         sync.Mutex
 }
 
+func (s *Session) SetStatus(status SessionStatus) {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+	if s.Status == SessionClosed || s.Status == SessionDownstreamClosed || s.Status == SessionUpstreamClosed {
+		return
+	}
+	s.Status = status
+}
+
+func (s *Session) GetStatus() SessionStatus {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+	return s.Status
+}
+
+func (s *Session) SetAnnotaion(annotation string) {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+	if s.Status == SessionClosed {
+		return
+	}
+	s.Annotation = annotation
+}
+
+func (s *Session) GetAnnotaion(annotation string) string {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+	return s.Annotation
+}
 func (client *Client) WsLockWriteMessage(messageType int, data []byte) error {
 	client.Mu.Lock()
 	defer client.Mu.Unlock()
 	client.Socket.SetWriteDeadline(time.Now().Add(WriteWait))
 	return client.Socket.WriteMessage(messageType, data)
+}
+
+func GenerateSessionClosedMessage(sessionId, payload string) *TunnelMessage {
+	tunnelMessage := new(TunnelMessage)
+	tunnelMessage.SessionID = sessionId
+	tunnelMessage.MessageType = CloseMessage
+	tunnelMessage.Payload = []byte(payload)
+	return tunnelMessage
 }

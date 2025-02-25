@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Full-Screen SSH Terminal</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css" />
+  <script src="https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js"></script>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #1e1e1e;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+    #terminal-container {
+      width: 100%;
+      height: 100%;
+    }
+    .modal {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+    }
+    .modal-content {
+      background: #2a2a2a;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      min-width: 300px;
+      box-shadow: 0 4px 10px rgba(255, 255, 255, 0.2);
+    }
+    .input-group {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .input-group label {
+      flex: 1;
+      text-align: right;
+      padding-right: 10px;
+    }
+    .input-group input {
+      flex: 2;
+      padding: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    .btn {
+      background: #2196F3; /* 蓝色 */
+      color: white;
+      padding: 8px 15px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 5px; /* 增加按钮间距 */
+    }
+    .btn:hover {
+      background: #1e88e5; /* 深蓝色 */
+    }
+    .btn-container {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 15px; /* 增加按钮与上方内容的间距 */
+    }
+  </style>
+</head>
+<body>
+  <div id="terminal-container"></div>
+  <button id="fullscreen-btn" class="btn" style="position: absolute; top: 10px; right: 10px;">Enter Fullscreen</button>
+
+  <div id="login-modal" class="modal">
+    <div class="modal-content">
+      <p>Have you configured passwordless login, skipping username and password authentication?</p>
+      <div class="btn-container">
+        <button id="yes-btn" class="btn">Yes</button>
+        <button id="no-btn" class="btn">No</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="input-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="input-group">
+        <label for="username">Username:</label>
+        <input type="text" id="username" autofocus>
+      </div>
+      <div class="input-group">
+        <label for="password">Password:</label>
+        <input type="password" id="password">
+      </div>
+      <button id="submit-btn" class="btn">Connect</button>
+    </div>
+  </div>
+
+  <script>
+    const terminalContainer = document.getElementById('terminal-container');
+    const terminal = new Terminal();
+    terminal.open(terminalContainer);
+    const socket = new WebSocket("ws://127.0.0.1:8080/proxy?clientid=guojy&address=ssh://192.168.1.63:22");
+
+    document.getElementById("yes-btn").addEventListener("click", () => {
+      document.getElementById("login-modal").style.display = "none";
+      socket.send("Y");
+    });
+
+    document.getElementById("no-btn").addEventListener("click", () => {
+      document.getElementById("login-modal").style.display = "none";
+      document.getElementById("input-modal").style.display = "flex";
+      socket.send("N");
+    });
+
+    document.getElementById("submit-btn").addEventListener("click", () => {
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+      if (username && password) {
+        document.getElementById("input-modal").style.display = "none";
+        socket.send(JSON.stringify({ action: "auth", username, password }));
+      } else {
+        alert("Username and Password are required!");
+      }
+    });
+
+    socket.onmessage = event => terminal.write(event.data);
+    terminal.onData(data => socket.send(data));
+    socket.onclose = () => terminal.write("\r\nConnection closed.\r\n");
+    socket.onerror = () => terminal.write("\r\nError connecting to SSH.\r\n");
+
+    function resizeTerminal() {
+      const cols = Math.floor(window.innerWidth / 10);
+      const rows = Math.floor(window.innerHeight / 20);
+      terminal.resize(cols, rows);
+    }
+
+    window.addEventListener('resize', resizeTerminal);
+    resizeTerminal();
+
+    function enterFullscreen() {
+      if (terminalContainer.requestFullscreen) {
+        terminalContainer.requestFullscreen();
+      } else if (terminalContainer.mozRequestFullScreen) {
+        terminalContainer.mozRequestFullScreen();
+      } else if (terminalContainer.webkitRequestFullscreen) {
+        terminalContainer.webkitRequestFullscreen();
+      } else if (terminalContainer.msRequestFullscreen) {
+        terminalContainer.msRequestFullscreen();
+      }
+    }
+
+    document.getElementById('fullscreen-btn').addEventListener('click', enterFullscreen);
+  </script>
+</body>
+</html>

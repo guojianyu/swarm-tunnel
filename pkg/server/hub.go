@@ -1,75 +1,79 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	tunnelPkg "swarm-tunnel/pkg"
-	"sync"
 
 	"k8s.io/klog"
 )
 
-func NewHub() *Hub {
-	return &Hub{
-		UpStreamRegister:     make(chan *Client),
-		UpStreamUnregister:   make(chan *Client),
-		DownStreamRegister:   make(chan *Client),
-		DownStreamUnregister: make(chan *Client),
-		SessionRegister:      make(chan *Session),
-		SessionUnregister:    make(chan *Session),
-		UpStreamClients:      sync.Map{},
-		DownStreamClients:    sync.Map{},
-		Sessions:             sync.Map{},
-	}
-}
-
-func NewTunnelServer() *TunnelServer {
-	return &TunnelServer{hub: NewHub()}
-}
-
 func (hub *Hub) Run() {
-	klog.Infof("Hub stared")
+	klog.Infof("The hub is stared")
+	defer func() {
+		klog.Infof("The hub is exited")
+	}()
 	for {
 		select {
 		case client := <-hub.DownStreamRegister:
 			hub.DownStreamClients.Store(client.ClientID, client)
+			if hub.registerClientCallback != nil {
+				hub.registerClientCallback(client.ClientID)
+			}
 			klog.V(1).Infof("Agent[%s] is successfully registered.", client.ClientID)
 		case client := <-hub.DownStreamUnregister:
-			c, ok := hub.DownStreamClients.Load(client.ClientID)
-			if ok {
-				client, ok = converseClient(c)
-				if !ok {
-					continue
-				}
+			klog.V(1).Infof("Agent[%s] is disconnected start.", client.ClientID)
+			_, ok := hub.DownStreamClients.Load(client.ClientID)
+			if !ok {
+				klog.Errorf("Agent[%s] load error.", client.ClientID)
+				continue
 			}
-
+			klog.V(1).Infof("Agent[%s] is disconnected mid.", client.ClientID)
+			client.close()
+			klog.V(1).Infof("Agent[%s] is disconnected delete.", client.ClientID)
 			hub.DownStreamClients.Delete(client.ClientID)
-			client.Cancel()
-			//	client.WsLockWriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-			client.Socket.Close()
+			if hub.unregisterClientCallback != nil {
+				hub.unregisterClientCallback(client.ClientID)
+			}
 			klog.V(1).Infof("Agent[%s] is disconnected.", client.ClientID)
 		case session := <-hub.SessionRegister:
 			hub.Sessions.Store(session.SessionID, session)
-			var action string
-			if session.GetStatus() == tunnelPkg.SessionConnecting {
-				action = "created"
-			} else if session.GetStatus() == tunnelPkg.SessionConnected {
-				action = "connected"
-			}
-			info := fmt.Sprintf("The session[%s] with the agent[%s] is %s", session.SessionID, session.downAgent().ClientID, action)
+			info := fmt.Sprintf("The session[%s] with the agent[%s] is %s ", session.SessionID, session.downAgent().ClientID, session.GetStatus())
 			klog.V(1).Infof(info)
+			if hub.registerSessionCallback != nil && session.GetStatus() == tunnelPkg.SessionConnected {
+				hub.registerSessionCallback(session.SessionID)
+			}
 			if session.Protocol != tunnelPkg.ProtocolHttp {
 				session.upAgent().WsLockWriteMessage(tunnelPkg.TextMessage, []byte(info))
 			}
-
 		case session := <-hub.SessionUnregister:
-			klog.V(1).Infof("The protocol[%s] session[%s] with the agent[%s] is removed", session.Protocol, session.SessionID, session.downAgent().ClientID)
-			if session.Protocol == tunnelPkg.ProtocolHttp {
-				hub.Sessions.Delete(session.SessionID)
+			if _, ok := hub.Sessions.Load(session.SessionID); !ok {
 				continue
 			}
 			hub.Sessions.Delete(session.SessionID)
-			session.Cancel()
-			session.upAgent().Close()
+			klog.V(1).Infof("The protocol[%s] session[%s] with the agent[%s] is removed %v", session.Protocol, session.SessionID, session.downAgent().ClientID, session.Annotation)
+			if session.Protocol == tunnelPkg.ProtocolHttp {
+				continue
+			}
+			if hub.unregisterSessionCallback != nil {
+				hub.unregisterSessionCallback(session.SessionID)
+			}
+			if session.Status != tunnelPkg.SessionUpstreamClosed {
+				session.upAgent().WsLockWriteMessage(tunnelPkg.TextMessage, []byte(session.Annotation))
+			} else {
+				//upstream is closed
+				tunnelMessage := tunnelPkg.GenerateSessionClosedMessage(session.SessionID, string(session.Status))
+				msg, err := json.Marshal(tunnelMessage)
+				if err != nil {
+					klog.Warning("(%v)Marshal error: %v", tunnelMessage, err)
+				} else {
+					session.downAgent().WsLockWriteMessage(tunnelPkg.TextMessage, msg)
+				}
+				// if !session.downAgent().IsClosed {
+				// 	session.downAgent().Send <- tunnelPkg.GenerateSessionClosedMessage(session.SessionID, string(session.Status))
+				// }
+			}
+			session.close()
 		}
 	}
 }

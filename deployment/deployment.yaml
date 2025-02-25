@@ -1,0 +1,84 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: swarm-server
+  namespace: xnet
+  labels:
+    app: swarm-server
+spec:
+  selector:
+    app: swarm-server
+  type: NodePort
+  ports:
+  - name: swarm-server
+    port: 8080
+    nodePort: 30888
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: swarm-server
+  namespace: xnet
+  labels:
+    app: swarm-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: swarm-server
+  template:
+    metadata:
+      labels:
+        app: swarm-server
+    spec:
+#      serviceAccountName: xnet-scheduler
+      nodeSelector:
+        kubernetes.io/hostname: "master"
+      containers:
+      - name: swarm-server
+        image: swarm-server:v1.0
+        imagePullPolicy: IfNotPresent
+        # command:
+        # - /bin/kube-scheduler
+        # - --config=/etc/kubernetes/scheduler-config.yaml
+        # - --v=3
+      #   volumeMounts:
+      #   - name: scheduler-config
+      #     mountPath: /etc/kubernetes
+      # volumes:
+      # - name: scheduler-config
+      #   configMap:
+      #     name: scheduler-config
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: swarm-client
+  namespace: xnet
+  labels:
+    app: swarm-client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: swarm-client
+  template:
+    metadata:
+      labels:
+        app: swarm-client
+    spec:
+#      serviceAccountName: xnet-scheduler
+      nodeSelector:
+        kubernetes.io/hostname: "master"
+      containers:
+      - name: swarm-client
+        image: swarm-client:v1.0
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: sshkey
+          mountPath: /root/.ssh
+      volumes:
+      - name: sshkey
+        hostPath:
+          path: /root/.ssh

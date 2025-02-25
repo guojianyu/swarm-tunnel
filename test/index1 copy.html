@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Full-Screen SSH Terminal</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css" />
+  <script src="https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js"></script>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    #terminal-container {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div id="terminal-container"></div>
+  <button id="fullscreen-btn" style="position: absolute; top: 10px; right: 10px;">Enter Fullscreen</button>
+  
+  <script>
+    const terminalContainer = document.getElementById('terminal-container');
+    const terminal = new Terminal();
+    const socket = new WebSocket('ws://192.168.0.140:30888?clientid=guojy&protocol=ssh');
+
+    terminal.open(terminalContainer);
+
+    // 动态调整终端尺寸
+    function resizeTerminal() {
+      const cols = Math.floor(window.innerWidth / 10);
+      const rows = Math.floor(window.innerHeight / 20);
+      terminal.resize(cols, rows);
+    }
+
+    window.addEventListener('resize', resizeTerminal);
+    resizeTerminal();  // 页面加载时调整终端尺寸
+
+    terminal.onData(data => socket.send(data));
+    socket.onmessage = event => terminal.write(event.data);
+
+    // 使终端容器全屏
+    function enterFullscreen() {
+      if (terminalContainer.requestFullscreen) {
+        terminalContainer.requestFullscreen();
+      } else if (terminalContainer.mozRequestFullScreen) { // Firefox
+        terminalContainer.mozRequestFullScreen();
+      } else if (terminalContainer.webkitRequestFullscreen) { // Chrome, Safari and Opera
+        terminalContainer.webkitRequestFullscreen();
+      } else if (terminalContainer.msRequestFullscreen) { // IE/Edge
+        terminalContainer.msRequestFullscreen();
+      }
+    }
+
+    // 监听全屏按钮点击事件
+    document.getElementById('fullscreen-btn').addEventListener('click', enterFullscreen);
+  </script>
+</body>
+</html>

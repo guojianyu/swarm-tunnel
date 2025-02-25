@@ -1,39 +1,9 @@
-注册信息
-
-session增加一个最后一次通信时间，如果大于5分钟将断开连接
-
-上层流session断线，服务端只删除服务端的session不会向下层流发送消息
-服务端下层流发送数据，发现没有session将通知下层流关闭session。
-
-下层流session断线，通知上层流关闭原因，然后关闭上层流
+http://127.0.0.1:8080/proxy?clientid=test&address=ws://127.0.0.1:9090/ws
+http://127.0.0.1:8080/proxy?clientid=test&address=ssh://192.168.0.140:22
+http://127.0.0.1:8080/proxy?clientid=test&address=http://127.0.0.1:8060/hello
 
 
-cluster
-type ConnectionMsg struct {
-	Session  string `json:"session,omitempty"` //仅仅ws连接需要提供session字段
-	Protocol string `json:"protocol"`          //必填 http,https,ssh,exec,logs
-	Action   string `json:"action,omitempty"`  //可以隐藏
-	SSH
-	ContainerLogs
-	VM
-}
-
-type SSH struct {
-	IP       string `json:"ip,omitempty"` //127.0.0.1
-	UserName string `json:"username,omitempty"`
-	Password string `json:"password,omitempty"`
-}
-
-type ContainerLogs struct {
-	NameSpace string `json:"namespace,omitempty"`
-	Pod       string `json:"pod,omitempty"`
-	Container string `json:"container,omitempty"`
-}
-
-type VM struct {
-	VMName   string `json:"vmName,omitempty"`
-	UserName string `json:"username,omitempty"`
-	Password string `json:"password,omitempty"`
-}
-
-http://127.0.0.1:8080/proxy/test/http/127.0.0.1:9000
+生成SSH密钥对：
+ssh-keygen -t rsa -b 2048
+将公钥复制到远程服务器：
+ssh-copy-id remote_host

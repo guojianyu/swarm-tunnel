@@ -28,6 +28,7 @@ func process(c *websocket.Conn) {
 			break
 		}
 		log.Printf("recv: %s", message)
+		message = []byte("response:" + string(message))
 		c.WriteMessage(1, message)
 	}
 }

@@ -1,23 +1,30 @@
 package downstream
 
 import (
-	"context"
-	"io"
-
-	"github.com/gorilla/websocket"
+	tunnelPkg "swarm-tunnel/pkg"
 )
 
-type WsClient struct {
-	Socket *websocket.Conn
-	out    *io.PipeWriter
-	in     *io.PipeReader
-	host   string
-	path   string
-}
+/*
+The protocol extension needs to implement the following methods
+*/
 type DownStream interface {
-	Connector() error
-	Processor(context.Context) error
+	//	Protocol() string
+	//Receives messages from the upper stream
+	Receive([]byte) error
+	//Send a message to the upper stream
+	Send() ([]byte, error)
+	//close connection
+	Close() error
 }
 
-type SshClient struct{}
-type ExecClient struct{}
+// Extend the downstream protocol
+func NewDownStream(tunnelMessage *tunnelPkg.TunnelMessage) (downstream DownStream, err error) {
+	if tunnelMessage.Protocol == tunnelPkg.ProtocolWebsocket {
+		downstream, err = NewWsClient(tunnelMessage)
+
+	} else if tunnelMessage.Protocol == tunnelPkg.ProtocolSSH {
+		downstream, err = NewSSHClient(tunnelMessage)
+
+	}
+	return
+}
