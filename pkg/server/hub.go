@@ -3,7 +3,8 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	tunnelPkg "swarm-tunnel/pkg"
+
+	tunnelPkg "github.com/guojianyu/swarm-tunnel/pkg"
 
 	"k8s.io/klog"
 )

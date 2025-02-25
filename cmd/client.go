@@ -2,7 +2,8 @@ package main
 
 import (
 	"flag"
-	"swarm-tunnel/pkg/client"
+
+	"github.com/guojianyu/swarm-tunnel/pkg/client"
 
 	"k8s.io/klog"
 )

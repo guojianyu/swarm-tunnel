@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"log"
 	"net/url"
-	tunnelPkg "swarm-tunnel/pkg"
 	"time"
+
+	tunnelPkg "github.com/guojianyu/swarm-tunnel/pkg"
 
 	"github.com/gorilla/websocket"
 )

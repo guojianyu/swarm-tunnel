@@ -3,7 +3,8 @@ package client
 import (
 	"context"
 	"encoding/json"
-	tunnelPkg "swarm-tunnel/pkg"
+
+	tunnelPkg "github.com/guojianyu/swarm-tunnel/pkg"
 
 	"k8s.io/klog"
 )

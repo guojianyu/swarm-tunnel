@@ -11,9 +11,10 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	tunnelPkg "swarm-tunnel/pkg"
 	"sync"
 	"time"
+
+	tunnelPkg "github.com/guojianyu/swarm-tunnel/pkg"
 
 	"github.com/gorilla/websocket"
 )

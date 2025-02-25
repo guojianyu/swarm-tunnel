@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"io"
 	"net/http"
-	tunnelPkg "swarm-tunnel/pkg"
 	"sync"
 	"time"
+
+	tunnelPkg "github.com/guojianyu/swarm-tunnel/pkg"
 
 	"k8s.io/klog"
 

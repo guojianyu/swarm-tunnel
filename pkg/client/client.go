@@ -8,9 +8,10 @@ import (
 	"os"
 	"os/signal"
 	"strings"
-	tunnelPkg "swarm-tunnel/pkg"
-	downStream "swarm-tunnel/pkg/client/downstream"
 	"time"
+
+	tunnelPkg "github.com/guojianyu/swarm-tunnel/pkg"
+	downStream "github.com/guojianyu/swarm-tunnel/pkg/client/downstream"
 
 	"k8s.io/klog"
 )

@@ -11,9 +11,10 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	tunnelPkg "swarm-tunnel/pkg"
 	"sync"
 	"time"
+
+	tunnelPkg "github.com/guojianyu/swarm-tunnel/pkg"
 
 	"github.com/gorilla/websocket"
 	"k8s.io/klog"
@@ -120,15 +121,10 @@ func (server *TunnelServer) register(w http.ResponseWriter, r *http.Request) {
 		downClient.close()
 		return
 	}
-	// server.hub.DownStreamClients.Range(
-	// 	func(key, value interface{}) bool {
-	// 		fmt.Println(key, value)
-	// 		return true
-	// 	},
-	// )
 	server.hub.DownStreamRegister <- downClient
 	defer func() {
 		klog.V(2).Infof("client[%s] defer", downClient.ClientID)
+
 		server.hub.DownStreamUnregister <- downClient
 	}()
 	go downClient.readDownStreamPump(server.hub)
@@ -146,7 +142,6 @@ func (server *TunnelServer) proxy(w http.ResponseWriter, r *http.Request) {
 	var ok bool
 	query := r.URL.Query()
 	agentClientID := strings.ToLower(query.Get("clientid"))
-	//protocol := query.Get("protocol")
 	address := query.Get("address")
 	tmp, err := url.Parse(address)
 	if err != nil {

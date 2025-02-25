@@ -3,7 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	"swarm-tunnel/pkg/server"
+
+	"github.com/guojianyu/swarm-tunnel/pkg/server"
 
 	"k8s.io/klog"
 )
