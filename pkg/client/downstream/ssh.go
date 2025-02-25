@@ -5,8 +5,9 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	tunnelPkg "swarm-tunnel/pkg"
 	"time"
+
+	tunnelPkg "github.com/guojianyu/swarm-tunnel/pkg"
 
 	"golang.org/x/crypto/ssh"
 )

@@ -1,7 +1,7 @@
 package downstream
 
 import (
-	tunnelPkg "swarm-tunnel/pkg"
+	tunnelPkg "github.com/guojianyu/swarm-tunnel/pkg"
 )
 
 /*
