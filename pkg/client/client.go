@@ -38,7 +38,7 @@ func (agent *TunnelAgent) sessionSendToServer(session *Session) error {
 	ticker := time.NewTicker(tunnelPkg.PingPeriod)
 	defer func() {
 		ticker.Stop()
-		klog.V(2).Infof("exit sessionSendToServer:%v", session.SessionID)
+		klog.V(4).Infof("exit sessionSendToServer:%v", session.SessionID)
 	}()
 	errChan := make(chan error)
 	go func() {
@@ -63,13 +63,8 @@ func (agent *TunnelAgent) sessionSendToServer(session *Session) error {
 		case <-session.Context.Done():
 			return nil
 		case <-ticker.C:
-			//send session ping,这部分改造，不发送session ping，逻辑改为间隔时间未检查到数据交互就断联
-			// klog.V(2).Infof("send session ping:%s", session.SessionID)
-			// tunnelMessage := new(tunnelPkg.TunnelMessage)
-			// tunnelMessage.SessionID = session.SessionID
-			// tunnelMessage.MessageType = tunnelPkg.PingMessage
-			// tunnelMessage.Payload = nil
-			// agent.hub.c.Send <- tunnelMessage
+			//Is the data interaction disconnected without checking the interval?
+
 		case err := <-errChan:
 			return err
 		}
@@ -92,7 +87,7 @@ func (agent *TunnelAgent) sessionNoticeServerClosed(sessionID string) {
 Handling http protocol
 */
 func (agent *TunnelAgent) httpProcessor(tunnelMessage *tunnelPkg.TunnelMessage) {
-	klog.V(2).Infof("tunnelMessage.HttpRequest: %v", tunnelMessage.HttpRequest)
+	klog.V(4).Infof("tunnelMessage.HttpRequest: %v", tunnelMessage.HttpRequest)
 	switch tunnelMessage.MessageType {
 	case tunnelPkg.ConnectMessage:
 		wsRes := &tunnelPkg.HttpResponse{}
@@ -109,7 +104,7 @@ func (agent *TunnelAgent) httpProcessor(tunnelMessage *tunnelPkg.TunnelMessage) 
 				Body: []byte(err.Error())}
 			return
 		}
-		klog.V(2).Infof("New tunnelMessage.HttpRequest: %v", localRequest)
+		klog.V(4).Infof("New tunnelMessage.HttpRequest: %v", localRequest)
 		resp, err := (&http.Client{}).Do(localRequest)
 		if err != nil {
 			klog.Errorf("local http request error: %v", err)
@@ -133,7 +128,6 @@ func (agent *TunnelAgent) httpProcessor(tunnelMessage *tunnelPkg.TunnelMessage) 
 All protocols except http are uniformly processed by this function
 */
 func (agent *TunnelAgent) Processor(tunnelMessage *tunnelPkg.TunnelMessage, ctx context.Context) {
-	//klog.V(2).Infof("client recv ,message:%v", tunnelMessage)
 	switch tunnelMessage.MessageType {
 	case tunnelPkg.PingMessage:
 		return
@@ -168,7 +162,7 @@ func (agent *TunnelAgent) Processor(tunnelMessage *tunnelPkg.TunnelMessage, ctx 
 							klog.Errorf("Session[%s] downstream read error:%v", session.SessionID, err)
 							return err
 						}
-						klog.V(2).Infof("Session[%s] downstream read: %v", session.SessionID, string(p[:n]))
+						klog.V(4).Infof("Session[%s] downstream read: %v", session.SessionID, string(p[:n]))
 						err = downstream.Receive(p[:n])
 						if err != nil {
 							klog.Errorf("Session[%s] downstream read error:%v", session.SessionID, err)
@@ -196,7 +190,7 @@ func (agent *TunnelAgent) Processor(tunnelMessage *tunnelPkg.TunnelMessage, ctx 
 							return err
 						}
 						_, err = session.downAgent().in.Write(message)
-						klog.V(2).Infof("Session[%s] downstream write: %v", session.SessionID, string(message))
+						klog.V(4).Infof("Session[%s] downstream write: %v", session.SessionID, string(message))
 						if err != nil {
 							klog.Errorf("Session[%s] downstream write error:%v", session.SessionID, err)
 							return err
@@ -286,7 +280,7 @@ func (agent *TunnelAgent) readServerMessage(ctx context.Context) error {
 			klog.Errorf("client read err: %v", err)
 			return err
 		}
-		klog.V(2).Infof("client recv ,type:%v,message %s", msgtype, message)
+		klog.V(4).Infof("client recv ,type:%v,message %s", msgtype, message)
 		switch msgtype {
 		case tunnelPkg.BinaryMessage, tunnelPkg.TextMessage:
 			tunnelMessage := new(tunnelPkg.TunnelMessage)
@@ -338,7 +332,7 @@ func (agent *TunnelAgent) writeServerMessage(ctx context.Context) error {
 				klog.Errorf("The client failed to write message to the server. %v:", err.Error())
 				return err
 			}
-			klog.V(2).Infof("The client send a message: %v, payload:%v", tunnelMessage, string(tunnelMessage.Payload))
+			klog.V(4).Infof("The client send a message: %v, payload:%v", tunnelMessage, string(tunnelMessage.Payload))
 		}
 	}
 
@@ -397,6 +391,9 @@ func (agent *TunnelAgent) Run() {
 	}()
 	select {
 	case <-interrupt:
+		if agent.hub.c != nil {
+			agent.hub.c.Socket.Close()
+		}
 		klog.Infoln("client interrupt")
 		return
 	}

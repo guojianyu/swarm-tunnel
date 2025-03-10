@@ -17,13 +17,13 @@ package downstream
 
 import (
 	"fmt"
-	"log"
 	"net/url"
 	"time"
 
 	tunnelPkg "github.com/guojianyu/swarm-tunnel/pkg"
 
 	"github.com/gorilla/websocket"
+	"k8s.io/klog"
 )
 
 type WsClient struct {
@@ -34,7 +34,6 @@ const protocol = "websocket"
 
 func NewWsClient(tunnelMessage *tunnelPkg.TunnelMessage) (*WsClient, error) {
 	ws := &WsClient{}
-	//log.Printf("ws Connector")
 	u := url.URL{Scheme: "ws", Host: tunnelMessage.Ws.Host, Path: tunnelMessage.Ws.Path}
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	ws.Socket = c
@@ -49,7 +48,7 @@ func (ws *WsClient) Receive(data []byte) error {
 	ws.Socket.SetWriteDeadline(time.Now().Add(tunnelPkg.WriteWait))
 	err := ws.Socket.WriteMessage(tunnelPkg.BinaryMessage, data)
 	if err != nil {
-		log.Println("client write close:", err)
+		klog.V(4).Infof("client write close:%v", err)
 		return fmt.Errorf("The downstream is disconnected: %v", err)
 	}
 	return nil
@@ -59,13 +58,13 @@ func (ws *WsClient) Send() (data []byte, err error) {
 	_, message, err := ws.Socket.ReadMessage()
 	if err != nil {
 		if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-			log.Printf("error: %v", err)
+			klog.V(4).Infof("error: %v", err)
 		}
 	}
 	return message, err
 }
 
 func (ws *WsClient) Close() error {
-	log.Println("ws is closed")
+	klog.V(4).Infof("ws is closed")
 	return ws.Socket.Close()
 }

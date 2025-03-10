@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -75,7 +74,6 @@ func (server *TunnelServer) getClients(w http.ResponseWriter, r *http.Request) {
 	clients := []string{}
 	server.hub.DownStreamClients.Range(
 		func(key, value interface{}) bool {
-			fmt.Println(key, value)
 			clients = append(clients, key.(string))
 			return true
 		},
@@ -119,6 +117,14 @@ func (server *TunnelServer) register(w http.ResponseWriter, r *http.Request) {
 		klog.Error("upgrade:", err)
 		return
 	}
+	if server.hub.registerClientHandle != nil {
+		if err := server.hub.registerClientHandle(agent, r); err != nil {
+			klog.V(4).Infof("Active disconnection,dynamic registerClientHandle error:%v", err)
+			c.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Server shutting down,%v", err)))
+			c.Close()
+			return
+		}
+	}
 	agentClientID := agent
 	ctx, cancel := context.WithCancel(context.Background())
 	downClient := &Client{
@@ -138,7 +144,7 @@ func (server *TunnelServer) register(w http.ResponseWriter, r *http.Request) {
 	}
 	server.hub.DownStreamRegister <- downClient
 	defer func() {
-		klog.V(2).Infof("client[%s] defer", downClient.ClientID)
+		klog.V(4).Infof("client[%s] defer", downClient.ClientID)
 
 		server.hub.DownStreamUnregister <- downClient
 	}()
@@ -181,9 +187,6 @@ func (server *TunnelServer) proxy(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	//ws
-	// host := "127.0.0.1:9090"
-	// path := "/ws"
 	sessionId := server.sessionIDGenarator()
 	upClient := &Client{
 		Socket:   c,
@@ -203,7 +206,7 @@ func (server *TunnelServer) proxy(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() {
 		//Registered sessions are handled by the hub
-		klog.V(2).Infof("session[%s] defer", session.SessionID)
+		klog.V(4).Infof("session[%s] defer", session.SessionID)
 		if _, ok := server.hub.ByIdGetSession(session.SessionID); ok {
 			server.hub.SessionUnregister <- session
 		} else {
@@ -277,8 +280,6 @@ func (server *TunnelServer) proxy(w http.ResponseWriter, r *http.Request) {
 	case tunnelPkg.ProtocolSSH:
 		ssh := new(tunnelPkg.SSH)
 		var err error
-		//ssh.Host = "192.168.1.63"
-		//ssh.Port = "22"
 		ssh.Host = ip
 		ssh.Port = port
 		ssh.User, ssh.Password, err = session.userSshInteraction(ssh.Host)
@@ -287,7 +288,7 @@ func (server *TunnelServer) proxy(w http.ResponseWriter, r *http.Request) {
 		}
 		//ssh.User = "root"
 		//ssh.Password = "AfDX{8Ag"
-		klog.V(2).Infof("ssh login info: %v", ssh)
+		klog.V(4).Infof("ssh login info: %v", ssh)
 		tunnelMessage.SSH = ssh
 	case tunnelPkg.ProtocolWebsocket:
 		ws := new(tunnelPkg.Ws)
@@ -324,7 +325,7 @@ func (c *Client) readDownStreamPump(hub *Hub) {
 	c.Socket.SetReadDeadline(time.Now().Add(tunnelPkg.PongWait))
 	c.Socket.SetPongHandler(func(string) error { c.Socket.SetReadDeadline(time.Now().Add(tunnelPkg.PongWait)); return nil })
 	defer func() {
-		klog.V(2).Infof("[%s] exit readDownStreamPump", c.ClientID)
+		klog.V(4).Infof("[%s] exit readDownStreamPump", c.ClientID)
 		c.Cancel()
 	}()
 	for {
@@ -338,13 +339,13 @@ func (c *Client) readDownStreamPump(hub *Hub) {
 				// 	klog.V(1).Infof("Failed to read data from downstream,%v.", err)
 				// 	break
 				// }
-				klog.V(2).Infof("Failed to read data from downstream[%s] ,%v.", c.ClientID, err)
+				klog.V(4).Infof("Failed to read data from downstream[%s] ,%v.", c.ClientID, err)
 				return
 			}
 
 			switch msgtype {
 			case tunnelPkg.PingMessage:
-				klog.V(1).Infof("ping.")
+				klog.V(4).Infof("ping.")
 			default:
 				tunnelMessage := new(tunnelPkg.TunnelMessage)
 				if err := json.Unmarshal(message, tunnelMessage); err != nil {
@@ -353,7 +354,7 @@ func (c *Client) readDownStreamPump(hub *Hub) {
 				}
 				sessionID := tunnelMessage.SessionID
 				if session, ok := hub.ByIdGetSession(sessionID); ok {
-					//klog.V(2).Infof("Session[%s] from agent[%s] received message: %v,payload: %v", sessionID, c.ClientID, tunnelMessage, string(tunnelMessage.Payload))
+					//klog.V(4).Infof("Session[%s] from agent[%s] received message: %v,payload: %v", sessionID, c.ClientID, tunnelMessage, string(tunnelMessage.Payload))
 					session.upAgent().Send <- tunnelMessage
 				} else {
 					// if tunnelMessage.Protocol == tunnelPkg.ProtocolHttp {
@@ -375,7 +376,7 @@ func (c *Client) readDownStreamPump(hub *Hub) {
 }
 func (c *Client) writeDownStreamPump(hub *Hub) {
 	defer func() {
-		klog.V(2).Infof("[%s] exit writeDownStreamPump", c.ClientID)
+		klog.V(4).Infof("[%s] exit writeDownStreamPump", c.ClientID)
 		c.Cancel()
 	}()
 	for {
@@ -384,17 +385,17 @@ func (c *Client) writeDownStreamPump(hub *Hub) {
 			return
 		case tunnelMessage, ok := <-c.Send:
 			if !ok {
-				klog.V(2).Infof("downStreamWritePump,%v.", ok)
+				klog.V(4).Infof("downStreamWritePump,%v.", ok)
 				return
 			}
-			//klog.V(2).Infof("Session[%s] to agent[%s] send message: %v", tunnelMessage.SessionID, c.ClientID, tunnelMessage)
+			//klog.V(4).Infof("Session[%s] to agent[%s] send message: %v", tunnelMessage.SessionID, c.ClientID, tunnelMessage)
 			msg, err := json.Marshal(tunnelMessage)
 			if err != nil {
 				klog.Warning("(%v)Marshal error: %v", tunnelMessage, err)
 				continue
 			}
 			if err := c.WsLockWriteMessage(tunnelPkg.TextMessage, msg); err != nil {
-				klog.V(2).Infof("Failed to write data to agent[%s] ,%v.", c.ClientID, err)
+				klog.V(4).Infof("Failed to write data to agent[%s] ,%v.", c.ClientID, err)
 				//notice hub unregister session if downstream write failed
 				if session, ok := hub.ByIdGetSession(tunnelMessage.SessionID); ok {
 					session.SetStatus(tunnelPkg.SessionDownstreamClosed)
@@ -410,7 +411,7 @@ func (c *Client) writeDownStreamPump(hub *Hub) {
 
 func (c *Client) pingDownStream(hub *Hub) {
 	defer func() {
-		klog.V(2).Infof("[%s] exit pingDownStream", c.ClientID)
+		klog.V(4).Infof("[%s] exit pingDownStream", c.ClientID)
 		//hub.DownStreamUnregister <- c
 	}()
 	ticker := time.NewTicker(tunnelPkg.PingPeriod)
@@ -418,7 +419,7 @@ func (c *Client) pingDownStream(hub *Hub) {
 		select {
 		case <-ticker.C:
 			if err := c.WsLockWriteMessage(tunnelPkg.PingMessage, []byte{}); err != nil {
-				klog.V(2).Infof("Failed to write data to agent[%s] ,%v.", c.ClientID, err)
+				klog.V(4).Infof("Failed to write data to agent[%s] ,%v.", c.ClientID, err)
 				return
 			}
 		case <-c.Context.Done():
@@ -431,16 +432,16 @@ func (s *Session) readUpStreamPump(hub *Hub) {
 	s.upAgent().Socket.SetReadDeadline(time.Now().Add(tunnelPkg.PongWait))
 	s.upAgent().Socket.SetPongHandler(func(string) error { s.upAgent().Socket.SetReadDeadline(time.Now().Add(tunnelPkg.PongWait)); return nil })
 	defer func() {
-		klog.V(2).Infof("exit upStreamReadPump")
+		klog.V(4).Infof("exit upStreamReadPump")
 		s.Cancel()
 	}()
 	for {
 		select {
 		case <-s.Context.Done():
-			klog.V(2).Infof("readUpStreamPump ctx done")
+			klog.V(4).Infof("readUpStreamPump ctx done")
 			return
 		case <-s.downAgent().Context.Done():
-			klog.V(2).Infof("readUpStreamPump downagent ctx done")
+			klog.V(4).Infof("readUpStreamPump downagent ctx done")
 			return
 		default:
 			msgtype, message, err := s.upAgent().Socket.ReadMessage()
@@ -469,7 +470,7 @@ func (s *Session) readUpStreamPump(hub *Hub) {
 
 func (s *Session) writeUpStreamPump(hub *Hub) {
 	defer func() {
-		klog.V(2).Infof("exit upStreamWritePump")
+		klog.V(4).Infof("exit upStreamWritePump")
 		s.Cancel()
 	}()
 	ticker := time.NewTicker(tunnelPkg.PingPeriod)
@@ -478,7 +479,7 @@ func (s *Session) writeUpStreamPump(hub *Hub) {
 		case <-s.Context.Done():
 			return
 		case <-s.downAgent().Context.Done():
-			klog.V(2).Infof("writeUpStreamPump downagent ctx done")
+			klog.V(4).Infof("writeUpStreamPump downagent ctx done")
 			return
 		case tunnelMessage, ok := <-s.upAgent().Send:
 			if !ok {
@@ -486,7 +487,7 @@ func (s *Session) writeUpStreamPump(hub *Hub) {
 				//c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
-			klog.V(2).Infof("Session[%s] from agent[%s] received message: %v,payload: %s", tunnelMessage.SessionID, s.downAgent().ClientID, tunnelMessage, tunnelMessage.Payload)
+			klog.V(4).Infof("Session[%s] from agent[%s] received message: %v,payload: %s", tunnelMessage.SessionID, s.downAgent().ClientID, tunnelMessage, tunnelMessage.Payload)
 			switch tunnelMessage.MessageType {
 			case tunnelPkg.ConnectMessage:
 				if s.GetStatus() == tunnelPkg.SessionConnecting {
@@ -504,13 +505,13 @@ func (s *Session) writeUpStreamPump(hub *Hub) {
 			}
 			err := s.upAgent().WsLockWriteMessage(tunnelPkg.TextMessage, tunnelMessage.Payload)
 			if err != nil {
-				klog.V(2).Infof("Session[%s] is closed", tunnelMessage.SessionID)
+				klog.V(4).Infof("Session[%s] is closed", tunnelMessage.SessionID)
 				return
 			}
 
 		case <-ticker.C:
 			if err := s.upAgent().WsLockWriteMessage(tunnelPkg.PingMessage, []byte{}); err != nil {
-				klog.V(2).Infof("Session[%s] is closed", s.SessionID)
+				klog.V(4).Infof("Session[%s] is closed", s.SessionID)
 				return
 			}
 		}
@@ -535,7 +536,7 @@ func (s *Session) userSshInteraction(host string) (user, password string, err er
 		return
 	}
 	if err = json.Unmarshal(message, &auth); err != nil {
-		log.Println("JSON Parse Error:", err)
+		klog.Errorf("JSON Parse Error:%v", err)
 		return
 	}
 	user = auth["username"]

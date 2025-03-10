@@ -1,15 +1,30 @@
+/*
+Copyright 2025 The Guojianyu Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 package downstream
 
 import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"time"
 
 	tunnelPkg "github.com/guojianyu/swarm-tunnel/pkg"
 
 	"golang.org/x/crypto/ssh"
+	"k8s.io/klog"
 )
 
 type SSHClient struct {
@@ -64,12 +79,12 @@ func connectSSH(config *tunnelPkg.SSH) (*ssh.Client, *ssh.Session, error) {
 }
 
 func NewSSHClient(tunnelMessage *tunnelPkg.TunnelMessage) (*SSHClient, error) {
-	log.Println("ssh config:", tunnelMessage.SSH)
+	klog.V(4).Infof("ssh config: %v", tunnelMessage.SSH)
 	var err error
 	sshclient := &SSHClient{}
 	sshclient.client, sshclient.session, err = connectSSH(tunnelMessage.SSH)
 	if err != nil {
-		log.Println("SSH Connection Error:", err)
+		klog.V(4).Infof("SSH Connection Error: %v", err)
 		return nil, err
 	}
 
@@ -88,7 +103,7 @@ func NewSSHClient(tunnelMessage *tunnelPkg.TunnelMessage) (*SSHClient, error) {
 
 	// Request pseudo-terminal for interactive SSH session
 	if err := sshclient.session.RequestPty("xterm", 80, 80, ssh.TerminalModes{}); err != nil {
-		log.Println("Error requesting PTY:", err)
+		klog.V(4).Infof("Error requesting PTY: %v", err)
 		return nil, fmt.Errorf("Error requesting PTY:%v", err)
 	}
 
@@ -102,7 +117,7 @@ func NewSSHClient(tunnelMessage *tunnelPkg.TunnelMessage) (*SSHClient, error) {
 func (sshclient *SSHClient) Receive(data []byte) error {
 	_, err := sshclient.stdin.Write(data)
 	if err != nil {
-		log.Println("Error writing to SSH stdin:", err)
+		klog.V(4).Infof("Error writing to SSH stdin: %v", err)
 	}
 	return err
 }
@@ -110,7 +125,7 @@ func (sshclient *SSHClient) Send() (data []byte, err error) {
 	buffer := make([]byte, 1024)
 	n, err := sshclient.stdout.Read(buffer)
 	if err != nil {
-		log.Println("Error reading from SSH stdout:", err)
+		klog.V(4).Infof("Error reading from SSH stdout: %v", err)
 		return nil, err
 	}
 	return buffer[:n], nil

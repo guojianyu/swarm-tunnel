@@ -23,13 +23,13 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"sync"
 	"time"
 
 	tunnelPkg "github.com/guojianyu/swarm-tunnel/pkg"
+	"k8s.io/klog"
 
 	"github.com/gorilla/websocket"
 )
@@ -170,29 +170,29 @@ func wsToLocalRequest(websocketReq *tunnelPkg.HttpRequest) (*http.Request, error
 	r := bufio.NewReader(bytes.NewReader([]byte(websocketReq.HttpRequest)))
 	localRequest, err := http.ReadRequest(r)
 	if err != nil {
-		log.Println("deserialize request error", err)
+		klog.V(4).Infof("deserialize request error: %v", err)
 		return localRequest, err
 	}
 
 	localRequest.RequestURI = ""
 	u, err := url.Parse(websocketReq.URL)
 	if err != nil {
-		log.Println("parse url error", err)
+		klog.V(4).Infof("parse url error: %v", err)
 		return nil, err
 	}
 	localRequest.URL = u
 	localRequest.URL.Scheme = u.Scheme
 	localRequest.URL.Host = u.Host
 
-	log.Println("localRequest.URL", localRequest.URL)
-	log.Println("localRequest.URL.Host", localRequest.URL.Host)
+	klog.V(4).Infof("localRequest.URL", localRequest.URL)
+	klog.V(4).Infof("localRequest.URL.Host", localRequest.URL.Host)
 	return localRequest, nil
 }
 
 func localResponseToWebSocketResponse(resp *http.Response) (*tunnelPkg.HttpResponse, error) {
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Println("read local response error ", err)
+		klog.V(4).Infof("read local response error ", err)
 		return nil, err
 	}
 	resp.Body.Close()

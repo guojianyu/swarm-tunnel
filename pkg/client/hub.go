@@ -38,10 +38,10 @@ func (hub *Hub) Run(ctx context.Context) {
 			tunnelMessage.MessageType = tunnelPkg.ConnectMessage
 			msg, err := json.Marshal(tunnelMessage)
 			if err != nil {
-				klog.V(2).Infof("marshal error:%v", err)
+				klog.V(4).Infof("marshal error:%v", err)
 				continue
 			}
-			klog.V(2).Infof("send connection message: %s", msg)
+			klog.V(4).Infof("send connection message: %s", msg)
 			hub.c.Send <- tunnelMessage
 			// if err := hub.c.WsLockWriteMessage(tunnelPkg.TextMessage, msg); err != nil {
 			// 	klog.V(1).Infof("send close session error: %v", err)

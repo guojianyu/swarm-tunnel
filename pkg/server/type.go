@@ -42,6 +42,7 @@ type Hub struct {
 	SessionRegister           chan *Session
 	SessionUnregister         chan *Session
 	Sessions                  sync.Map
+	registerClientHandle      func(string, *http.Request) error
 	registerClientCallback    func(string)
 	unregisterClientCallback  func(string)
 	registerSessionCallback   func(string)
@@ -60,18 +61,28 @@ func (ts *TunnelServer) WithTLS(cafile, certFile, keyFile string) {
 	ts.webserver.KeyFile = keyFile
 }
 
-func (ts *TunnelServer) SetRegisterClientCallback(cb func(string)) {
+// The client starts to establish a connection, this function is executed, and the function returns an error that terminates the client connection
+func (ts *TunnelServer) SetRegisterClientHandle(cb func(clientId string, r *http.Request) error) {
+	ts.hub.registerClientHandle = cb
+}
+
+// This function is executed if the client is successfully registered
+func (ts *TunnelServer) SetRegisterdClientCallback(cb func(clientId string)) {
 	ts.hub.registerClientCallback = cb
 }
 
-func (ts *TunnelServer) SetUnregisterClientCallback(cb func(string)) {
+// This function is executed if the client is unregistered
+func (ts *TunnelServer) SetUnregisterdClientCallback(cb func(clientId string)) {
 	ts.hub.unregisterClientCallback = cb
 }
-func (ts *TunnelServer) SetRegisterSessionCallback(cb func(string)) {
+
+// This function is executed if the session is successfully registered
+func (ts *TunnelServer) SetRegisterdSessionCallback(cb func(sessionId string)) {
 	ts.hub.registerSessionCallback = cb
 }
 
-func (ts *TunnelServer) SetUnregisterSessionCallback(cb func(string)) {
+// This function is executed if the session is unregistered
+func (ts *TunnelServer) SetUnregisterdSessionCallback(cb func(sessionId string)) {
 	ts.hub.unregisterSessionCallback = cb
 }
 
@@ -153,7 +164,7 @@ func (client *Client) close() {
 
 // close upper stream if session closure
 func (s *Session) close() {
-	klog.V(2).Infof("session:%v is closed", s.SessionID)
+	klog.V(4).Infof("session:%v is closed", s.SessionID)
 	s.upAgent().Mu.Lock()
 	defer s.upAgent().Mu.Unlock()
 	if !s.upAgent().IsClosed {

@@ -16,8 +16,13 @@ limitations under the License.
 package main
 
 import (
+	"crypto/x509"
+	"encoding/asn1"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"log"
+	"net/http"
 
 	"github.com/guojianyu/swarm-tunnel/pkg/server"
 
@@ -26,29 +31,71 @@ import (
 
 func main() {
 	klog.InitFlags(nil)
-	flag.Set("v", "3")
+	flag.Set("v", "4")
 	flag.Parse()
 	tunnelServer := server.NewTunnelServer(":8080")
-	tunnelServer.SetRegisterClientCallback(func(clientID string) {
+
+	tunnelServer.SetRegisterClientHandle(func(clientID string, r *http.Request) error {
+		fmt.Printf("dynamic Handle[%s]\n", clientID)
+		if r.TLS == nil {
+			return nil
+		}
+		if len(r.TLS.PeerCertificates) < 1 {
+			return nil
+		}
+		tlsConn := r.TLS.PeerCertificates[0]
+		return extractUUIDFromCert(tlsConn)
+
+	})
+
+	tunnelServer.SetRegisterdClientCallback(func(clientID string) {
 		fmt.Printf("dynamic callback：client[%s] register!\n", clientID)
 	})
-	tunnelServer.SetUnregisterClientCallback(func(clientID string) {
+	tunnelServer.SetUnregisterdClientCallback(func(clientID string) {
 		fmt.Printf("dynamic callback：client[%s] unregister!\n", clientID)
 	})
-	tunnelServer.SetRegisterSessionCallback(func(sessionID string) {
+	tunnelServer.SetRegisterdSessionCallback(func(sessionID string) {
 		fmt.Printf("dynamic callback：session[%s] register!\n", sessionID)
 	})
-	tunnelServer.SetUnregisterSessionCallback(func(sessionID string) {
+	tunnelServer.SetUnregisterdSessionCallback(func(sessionID string) {
 		fmt.Printf("dynamic callback：session[%s] unregister!\n", sessionID)
 	})
 
-	// {
-	// 	ca := "D:/workspace/go/src/test/multi-cluster/cert/ca_cert.pem"
-	// 	cert := "D:/workspace/go/src/test/multi-cluster/cert/server_cert.pem"
-	// 	key := "D:/workspace/go/src/test/multi-cluster/cert/server_key.pem"
-	// 	tunnelServer.WithTLS(ca, cert, key)
+	{
+		ca := "D:/workspace/go/src/test/multi-cluster/cert/ca_cert.pem"
+		cert := "D:/workspace/go/src/test/multi-cluster/cert/server_cert.pem"
+		key := "D:/workspace/go/src/test/multi-cluster/cert/server_key.pem"
+		tunnelServer.WithTLS(ca, cert, key)
 
-	// }
+	}
 
 	tunnelServer.Run()
+}
+
+var uuidOID = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 8} // 自定义 UUID 的 OID
+type ExtraInformation struct {
+	ClientUUID  string `json:"clientuuid"`
+	JwtToken    string `json:"jwttoken"`
+	Alias       string `json:"alias"`
+	Location    string `json:"location"`
+	Description string `json:"description"`
+}
+
+func extractUUIDFromCert(cert *x509.Certificate) error {
+	for _, ext := range cert.Extensions {
+		if ext.Id.Equal(uuidOID) { // 检查自定义 UUID OID
+			var extra ExtraInformation
+			err := json.Unmarshal(ext.Value, &extra)
+			if err != nil {
+				log.Printf("Failed to parse UUID from certificate: %v", err)
+				return err
+			}
+			fmt.Printf("ExtraInformation:%v", extra)
+			if extra.ClientUUID == "guojy" {
+				return fmt.Errorf("I do not like guojy!")
+			}
+			return nil
+		}
+	}
+	return nil
 }
