@@ -38,7 +38,7 @@ type SSHClient struct {
 func connectSSH(config *tunnelPkg.SSH) (*ssh.Client, *ssh.Session, error) {
 	var auth ssh.AuthMethod
 	if len(config.Password) == 0 {
-		privateKeyPath := "root/.ssh/id_rsa"
+		privateKeyPath := "/root/.ssh/id_rsa"
 		// read privatekey
 		key, err := ioutil.ReadFile(privateKeyPath)
 		if err != nil {
