@@ -221,3 +221,11 @@ func (hub *Hub) ByIdGetSession(sessionID string) (*Session, bool) {
 	}
 	return nil, false
 }
+
+func (hub *Hub) ByIdGetClient(clientID string) (*Client, bool) {
+	if c, ok := hub.DownStreamClients.Load(clientID); ok {
+		client, ok := converseClient(c)
+		return client, ok
+	}
+	return nil, false
+}

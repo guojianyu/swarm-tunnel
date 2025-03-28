@@ -16,13 +16,10 @@ limitations under the License.
 package main
 
 import (
-	"crypto/x509"
-	"encoding/asn1"
-	"encoding/json"
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
+	"time"
 
 	"github.com/guojianyu/swarm-tunnel/pkg/server"
 
@@ -37,15 +34,7 @@ func main() {
 
 	tunnelServer.SetRegisterClientHandle(func(clientID string, r *http.Request) error {
 		fmt.Printf("dynamic Handle[%s]\n", clientID)
-		if r.TLS == nil {
-			return nil
-		}
-		if len(r.TLS.PeerCertificates) < 1 {
-			return nil
-		}
-		tlsConn := r.TLS.PeerCertificates[0]
-		return extractUUIDFromCert(tlsConn)
-
+		return nil
 	})
 
 	tunnelServer.SetRegisterdClientCallback(func(clientID string) {
@@ -61,41 +50,18 @@ func main() {
 		fmt.Printf("dynamic callback：session[%s] unregister!\n", sessionID)
 	})
 
-	{
-		ca := "D:/workspace/go/src/test/multi-cluster/cert/ca_cert.pem"
-		cert := "D:/workspace/go/src/test/multi-cluster/cert/server_cert.pem"
-		key := "D:/workspace/go/src/test/multi-cluster/cert/server_key.pem"
-		tunnelServer.WithTLS(ca, cert, key)
+	// {
+	// 	ca := "D:/workspace/go/src/test/multi-cluster/cert/ca_cert.pem"
+	// 	cert := "D:/workspace/go/src/test/multi-cluster/cert/server_cert.pem"
+	// 	key := "D:/workspace/go/src/test/multi-cluster/cert/server_key.pem"
+	// 	tunnelServer.WithTLS(ca, cert, key)
 
-	}
+	// }
+	go func() {
+		time.Sleep(10 * time.Second)
+		err := tunnelServer.ManualDisconnenctClient("guojy")
+		fmt.Printf("Disconnenct [%v]client! ,%v\n", "guojy", err)
 
+	}()
 	tunnelServer.Run()
-}
-
-var uuidOID = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 8} // 自定义 UUID 的 OID
-type ExtraInformation struct {
-	ClientUUID  string `json:"clientuuid"`
-	JwtToken    string `json:"jwttoken"`
-	Alias       string `json:"alias"`
-	Location    string `json:"location"`
-	Description string `json:"description"`
-}
-
-func extractUUIDFromCert(cert *x509.Certificate) error {
-	for _, ext := range cert.Extensions {
-		if ext.Id.Equal(uuidOID) { // 检查自定义 UUID OID
-			var extra ExtraInformation
-			err := json.Unmarshal(ext.Value, &extra)
-			if err != nil {
-				log.Printf("Failed to parse UUID from certificate: %v", err)
-				return err
-			}
-			fmt.Printf("ExtraInformation:%v", extra)
-			if extra.ClientUUID == "guojy" {
-				return fmt.Errorf("I do not like guojy!")
-			}
-			return nil
-		}
-	}
-	return nil
 }

@@ -70,6 +70,15 @@ func (server *TunnelServer) Run() {
 
 }
 
+func (server *TunnelServer) ManualDisconnenctClient(clientId string) error {
+	if client, ok := server.hub.ByIdGetClient(clientId); !ok {
+		return fmt.Errorf("The [%v]clientid is not connected", clientId)
+	} else {
+		client.Cancel()
+	}
+	return nil
+}
+
 func (server *TunnelServer) getClients(w http.ResponseWriter, r *http.Request) {
 	clients := []string{}
 	server.hub.DownStreamClients.Range(
@@ -412,7 +421,6 @@ func (c *Client) writeDownStreamPump(hub *Hub) {
 func (c *Client) pingDownStream(hub *Hub) {
 	defer func() {
 		klog.V(4).Infof("[%s] exit pingDownStream", c.ClientID)
-		//hub.DownStreamUnregister <- c
 	}()
 	ticker := time.NewTicker(tunnelPkg.PingPeriod)
 	for {
