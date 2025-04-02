@@ -230,7 +230,7 @@ func (server *TunnelServer) proxy(w http.ResponseWriter, r *http.Request) {
 			session.upAgent().Socket.WriteMessage(websocket.TextMessage, []byte("The side client is not online!"))
 			return
 		}
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintln(w, "The side client is not online!")
 		return
 	}
