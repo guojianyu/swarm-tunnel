@@ -295,9 +295,7 @@ func (server *TunnelServer) proxy(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return
 		}
-		//ssh.User = "root"
-		//ssh.Password = "AfDX{8Ag"
-		klog.V(4).Infof("ssh login info: %v", ssh)
+		klog.V(5).Infof("ssh login info: %v", ssh)
 		tunnelMessage.SSH = ssh
 	case tunnelPkg.ProtocolWebsocket:
 		ws := new(tunnelPkg.Ws)
@@ -363,7 +361,7 @@ func (c *Client) readDownStreamPump(hub *Hub) {
 				}
 				sessionID := tunnelMessage.SessionID
 				if session, ok := hub.ByIdGetSession(sessionID); ok {
-					//klog.V(4).Infof("Session[%s] from agent[%s] received message: %v,payload: %v", sessionID, c.ClientID, tunnelMessage, string(tunnelMessage.Payload))
+					klog.V(5).Infof("Session[%s] from agent[%s] received message: %v,payload: %v", sessionID, c.ClientID, tunnelMessage, string(tunnelMessage.Payload))
 					session.upAgent().Send <- tunnelMessage
 				} else {
 					// if tunnelMessage.Protocol == tunnelPkg.ProtocolHttp {
@@ -397,7 +395,7 @@ func (c *Client) writeDownStreamPump(hub *Hub) {
 				klog.V(4).Infof("downStreamWritePump,%v.", ok)
 				return
 			}
-			//klog.V(4).Infof("Session[%s] to agent[%s] send message: %v", tunnelMessage.SessionID, c.ClientID, tunnelMessage)
+			klog.V(5).Infof("Session[%s] to agent[%s] send message: %v", tunnelMessage.SessionID, c.ClientID, tunnelMessage)
 			msg, err := json.Marshal(tunnelMessage)
 			if err != nil {
 				klog.Warning("(%v)Marshal error: %v", tunnelMessage, err)
@@ -495,7 +493,7 @@ func (s *Session) writeUpStreamPump(hub *Hub) {
 				//c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
-			klog.V(4).Infof("Session[%s] from agent[%s] received message: %v,payload: %s", tunnelMessage.SessionID, s.downAgent().ClientID, tunnelMessage, tunnelMessage.Payload)
+			klog.V(5).Infof("Session[%s] from agent[%s] received message: %v,payload: %s", tunnelMessage.SessionID, s.downAgent().ClientID, tunnelMessage, tunnelMessage.Payload)
 			switch tunnelMessage.MessageType {
 			case tunnelPkg.ConnectMessage:
 				if s.GetStatus() == tunnelPkg.SessionConnecting {

@@ -184,8 +184,8 @@ func wsToLocalRequest(websocketReq *tunnelPkg.HttpRequest) (*http.Request, error
 	localRequest.URL.Scheme = u.Scheme
 	localRequest.URL.Host = u.Host
 
-	klog.V(4).Infof("localRequest.URL", localRequest.URL)
-	klog.V(4).Infof("localRequest.URL.Host", localRequest.URL.Host)
+	klog.V(4).Infof("localRequest.URL: %v", localRequest.URL)
+	klog.V(4).Infof("localRequest.URL.Host: %v", localRequest.URL.Host)
 	return localRequest, nil
 }
 

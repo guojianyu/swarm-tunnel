@@ -162,7 +162,7 @@ func (agent *TunnelAgent) Processor(tunnelMessage *tunnelPkg.TunnelMessage, ctx 
 							klog.Errorf("Session[%s] downstream read error:%v", session.SessionID, err)
 							return err
 						}
-						klog.V(4).Infof("Session[%s] downstream read: %v", session.SessionID, string(p[:n]))
+						klog.V(5).Infof("Session[%s] downstream read: %v", session.SessionID, string(p[:n]))
 						err = downstream.Receive(p[:n])
 						if err != nil {
 							klog.Errorf("Session[%s] downstream read error:%v", session.SessionID, err)
@@ -190,7 +190,7 @@ func (agent *TunnelAgent) Processor(tunnelMessage *tunnelPkg.TunnelMessage, ctx 
 							return err
 						}
 						_, err = session.downAgent().in.Write(message)
-						klog.V(4).Infof("Session[%s] downstream write: %v", session.SessionID, string(message))
+						klog.V(5).Infof("Session[%s] downstream write: %v", session.SessionID, string(message))
 						if err != nil {
 							klog.Errorf("Session[%s] downstream write error:%v", session.SessionID, err)
 							return err
@@ -280,7 +280,7 @@ func (agent *TunnelAgent) readServerMessage(ctx context.Context) error {
 			klog.Errorf("client read err: %v", err)
 			return err
 		}
-		klog.V(4).Infof("client recv ,type:%v,message %s", msgtype, message)
+		klog.V(5).Infof("client recv ,type:%v,message %s", msgtype, message)
 		switch msgtype {
 		case tunnelPkg.BinaryMessage, tunnelPkg.TextMessage:
 			tunnelMessage := new(tunnelPkg.TunnelMessage)
@@ -332,7 +332,7 @@ func (agent *TunnelAgent) writeServerMessage(ctx context.Context) error {
 				klog.Errorf("The client failed to write message to the server. %v:", err.Error())
 				return err
 			}
-			klog.V(4).Infof("The client send a message: %v, payload:%v", tunnelMessage, string(tunnelMessage.Payload))
+			klog.V(5).Infof("The client send a message: %v, payload:%v", tunnelMessage, string(tunnelMessage.Payload))
 		}
 	}
 

@@ -38,13 +38,11 @@ func (hub *Hub) Run() {
 			}
 			klog.V(1).Infof("Agent[%s] is successfully registered.", client.ClientID)
 		case client := <-hub.DownStreamUnregister:
-			klog.V(1).Infof("Agent[%s] is disconnected start.", client.ClientID)
 			_, ok := hub.DownStreamClients.Load(client.ClientID)
 			if !ok {
 				klog.Errorf("Agent[%s] load error.", client.ClientID)
 				continue
 			}
-			klog.V(1).Infof("Agent[%s] is disconnected mid.", client.ClientID)
 			client.close()
 			klog.V(1).Infof("Agent[%s] is disconnected delete.", client.ClientID)
 			hub.DownStreamClients.Delete(client.ClientID)
@@ -85,9 +83,6 @@ func (hub *Hub) Run() {
 				} else {
 					session.downAgent().WsLockWriteMessage(tunnelPkg.TextMessage, msg)
 				}
-				// if !session.downAgent().IsClosed {
-				// 	session.downAgent().Send <- tunnelPkg.GenerateSessionClosedMessage(session.SessionID, string(session.Status))
-				// }
 			}
 			session.close()
 		}

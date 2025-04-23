@@ -19,7 +19,6 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/guojianyu/swarm-tunnel/pkg/server"
 
@@ -57,11 +56,11 @@ func main() {
 	// 	tunnelServer.WithTLS(ca, cert, key)
 
 	// }
-	go func() {
-		time.Sleep(10 * time.Second)
-		err := tunnelServer.ManualDisconnenctClient("guojy")
-		fmt.Printf("Disconnenct [%v]client! ,%v\n", "guojy", err)
+	// go func() {
+	// 	time.Sleep(10 * time.Second)
+	// 	err := tunnelServer.ManualDisconnenctClient("guojy")
+	// 	fmt.Printf("Disconnenct [%v]client! ,%v\n", "guojy", err)
 
-	}()
+	// }()
 	tunnelServer.Run()
 }
