@@ -184,7 +184,7 @@ func (server *TunnelServer) proxy(w http.ResponseWriter, r *http.Request) {
 	path := tmp.Path
 	// Split host into address and port
 	ip, port, _ := strings.Cut(host, ":")
-	klog.Warningf("Request info: agent[%s] protocol[%s] host[ip %s port %s]  path[%s]", agentClientID, protocol, ip, port, path)
+	klog.V(4).Infof("Request info: agent[%s] protocol[%s] host[ip %s port %s]  path[%s]", agentClientID, protocol, ip, port, path)
 	var c *websocket.Conn
 	if protocol == tunnelPkg.ProtocolHttp {
 		c = nil
@@ -255,7 +255,7 @@ func (server *TunnelServer) proxy(w http.ResponseWriter, r *http.Request) {
 		tunnelMessage.HttpRequest = httpReq
 		//tunnelMessage.MessageType = tunnelPkg.BinaryMessage
 		session.downAgent().Send <- tunnelMessage
-		klog.V(1).Infof("session[%s] send http message to channel", session.SessionID)
+		klog.V(4).Infof("session[%s] send http message to channel", session.SessionID)
 		ticker := time.NewTicker(tunnelPkg.HttpRequestTimeout)
 		for {
 			select {

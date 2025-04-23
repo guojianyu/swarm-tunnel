@@ -46,9 +46,9 @@ func (hub *Hub) Run(ctx context.Context) {
 			// if err := hub.c.WsLockWriteMessage(tunnelPkg.TextMessage, msg); err != nil {
 			// 	klog.V(1).Infof("send close session error: %v", err)
 			// }
-			klog.V(1).Infof("The session[%s] is created", session.SessionID)
+			klog.V(4).Infof("The session[%s] is created", session.SessionID)
 		case session := <-hub.SessionUnregister:
-			klog.Infof("The session[%s] is removed", session.SessionID)
+			klog.V(4).Infof("The session[%s] is removed", session.SessionID)
 			if _, ok := hub.Sessions.Load(session.SessionID); ok {
 				hub.Sessions.Delete(session.SessionID)
 				session.close()

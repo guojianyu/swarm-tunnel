@@ -36,7 +36,7 @@ func (hub *Hub) Run() {
 			if hub.registerClientCallback != nil {
 				hub.registerClientCallback(client.ClientID)
 			}
-			klog.V(1).Infof("Agent[%s] is successfully registered.", client.ClientID)
+			klog.V(4).Infof("Agent[%s] is successfully registered.", client.ClientID)
 		case client := <-hub.DownStreamUnregister:
 			_, ok := hub.DownStreamClients.Load(client.ClientID)
 			if !ok {
@@ -44,16 +44,16 @@ func (hub *Hub) Run() {
 				continue
 			}
 			client.close()
-			klog.V(1).Infof("Agent[%s] is disconnected delete.", client.ClientID)
+			klog.V(4).Infof("Agent[%s] is disconnected delete.", client.ClientID)
 			hub.DownStreamClients.Delete(client.ClientID)
 			if hub.unregisterClientCallback != nil {
 				hub.unregisterClientCallback(client.ClientID)
 			}
-			klog.V(1).Infof("Agent[%s] is disconnected.", client.ClientID)
+			klog.V(4).Infof("Agent[%s] is disconnected.", client.ClientID)
 		case session := <-hub.SessionRegister:
 			hub.Sessions.Store(session.SessionID, session)
 			info := fmt.Sprintf("The session[%s] with the agent[%s] is %s ", session.SessionID, session.downAgent().ClientID, session.GetStatus())
-			klog.V(1).Infof(info)
+			klog.V(4).Infof(info)
 			if hub.registerSessionCallback != nil && session.GetStatus() == tunnelPkg.SessionConnected {
 				hub.registerSessionCallback(session.SessionID)
 			}
@@ -65,7 +65,7 @@ func (hub *Hub) Run() {
 				continue
 			}
 			hub.Sessions.Delete(session.SessionID)
-			klog.V(1).Infof("The protocol[%s] session[%s] with the agent[%s] is removed %v", session.Protocol, session.SessionID, session.downAgent().ClientID, session.Annotation)
+			klog.V(4).Infof("The protocol[%s] session[%s] with the agent[%s] is removed %v", session.Protocol, session.SessionID, session.downAgent().ClientID, session.Annotation)
 			if session.Protocol == tunnelPkg.ProtocolHttp {
 				continue
 			}
