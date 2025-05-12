@@ -66,16 +66,17 @@ type Hub struct {
 }
 
 type TunnelAgent struct {
-	hub       *Hub
-	webserver *tunnelPkg.WebServer
-	ClientID  string
+	hub         *Hub
+	webserver   *tunnelPkg.WebServer
+	ClientID    string
+	isConnected bool
 }
 
-func (ta *TunnelAgent) WithTLS(cafile, certFile, keyFile string) {
-	ta.webserver.EnableTLS = true
-	ta.webserver.CaFile = cafile
-	ta.webserver.CertFile = certFile
-	ta.webserver.KeyFile = keyFile
+func (agent *TunnelAgent) WithTLS(cafile, certFile, keyFile string) {
+	agent.webserver.EnableTLS = true
+	agent.webserver.CaFile = cafile
+	agent.webserver.CertFile = certFile
+	agent.webserver.KeyFile = keyFile
 }
 func NewHub() *Hub {
 	return &Hub{
@@ -91,7 +92,8 @@ func NewTunnelAgent(addr, clientID string) *TunnelAgent {
 		webserver: &tunnelPkg.WebServer{
 			Addr: addr,
 		},
-		ClientID: clientID,
+		ClientID:    clientID,
+		isConnected: false,
 	}
 }
 
@@ -123,21 +125,21 @@ func (client *Client) WsLockWriteMessage(messageType int, data []byte) error {
 	return client.Socket.WriteMessage(messageType, data)
 }
 
-func (ta *TunnelAgent) close() {
-	ta.hub.c.Socket.Close()
+func (agent *TunnelAgent) close() {
+	agent.hub.c.Socket.Close()
 }
 
-func (ta *TunnelAgent) newWebSocketClient() error {
-	u, err := url.Parse(ta.webserver.Addr)
+func (agent *TunnelAgent) newWebSocketClient() error {
+	u, err := url.Parse(agent.webserver.Addr)
 	if err != nil {
 		return fmt.Errorf("invalid URL: %v", err)
 	}
 	query := u.Query()
-	query.Set("clientid", ta.ClientID)
+	query.Set("clientid", agent.ClientID)
 	u.RawQuery = query.Encode()
 	dialer := websocket.Dialer{}
-	if ta.webserver.EnableTLS {
-		caCert, err := ioutil.ReadFile(ta.webserver.CaFile)
+	if agent.webserver.EnableTLS {
+		caCert, err := ioutil.ReadFile(agent.webserver.CaFile)
 		if err != nil {
 			return fmt.Errorf("failed to read CA cert: %v", err)
 		}
@@ -145,7 +147,7 @@ func (ta *TunnelAgent) newWebSocketClient() error {
 		caCertPool.AppendCertsFromPEM(caCert)
 
 		// load client certificate and key
-		clientCert, err := tls.LoadX509KeyPair(ta.webserver.CertFile, ta.webserver.KeyFile)
+		clientCert, err := tls.LoadX509KeyPair(agent.webserver.CertFile, agent.webserver.KeyFile)
 		if err != nil {
 			return fmt.Errorf("failed to load client cert/key: %v", err)
 		}
@@ -161,7 +163,7 @@ func (ta *TunnelAgent) newWebSocketClient() error {
 	if err != nil {
 		return fmt.Errorf("failed to connect: %v", err)
 	}
-	ta.hub.c = &Client{Socket: conn, Send: make(chan *tunnelPkg.TunnelMessage), Mu: sync.Mutex{}}
+	agent.hub.c = &Client{Socket: conn, Send: make(chan *tunnelPkg.TunnelMessage), Mu: sync.Mutex{}}
 	return nil
 }
 
@@ -199,4 +201,8 @@ func localResponseToWebSocketResponse(resp *http.Response) (*tunnelPkg.HttpRespo
 	wsRes := &tunnelPkg.HttpResponse{Status: resp.Status, StatusCode: resp.StatusCode,
 		Proto: resp.Proto, Header: resp.Header, Body: body, ContentType: resp.Header.Get("Content-Type")}
 	return wsRes, nil
+}
+
+func (agent *TunnelAgent) IsConnected() bool {
+	return agent.isConnected
 }

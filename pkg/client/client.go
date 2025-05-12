@@ -370,6 +370,7 @@ func (agent *TunnelAgent) Run() {
 				continue
 			}
 			klog.Infof("Connected WebSocket server: %s\n", agent.webserver.Addr)
+			agent.isConnected = true
 			errChan := make(chan error)
 			go agent.hub.Run(ctx)
 			go func() {
@@ -383,6 +384,7 @@ func (agent *TunnelAgent) Run() {
 			}()
 			err = <-errChan
 			klog.Errorf("The connection is abnormal,%s. Please wait for reconnection.", err.Error())
+			agent.isConnected = false
 			cancel()
 			agent.hub.c.Socket.Close()
 			time.Sleep(10 * time.Second)

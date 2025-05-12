@@ -7,3 +7,5 @@ http://127.0.0.1:8080/proxy?clientid=test&address=http://127.0.0.1:8060/hello
 ssh-keygen -t rsa -b 2048
 将公钥复制到远程服务器：
 ssh-copy-id remote_host
+
+ "AfDX{8Ag"
