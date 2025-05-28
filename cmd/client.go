@@ -28,8 +28,8 @@ func main() {
 	flag.Set("v", "3")
 	flag.Parse()
 	clientId := "guojy"
-	addr := "ws://39.105.15.153:8080/register"
-	//addr := "ws://localhost:8080/register"
+	//addr := "ws://39.105.15.153:8080/register"
+	addr := "ws://localhost:8080/register"
 	//addr := "wss://localhost:8080/register"
 	tunnelAgent := client.NewTunnelAgent(addr, clientId)
 	// {

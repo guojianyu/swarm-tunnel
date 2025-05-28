@@ -102,7 +102,7 @@ func NewSSHClient(tunnelMessage *tunnelPkg.TunnelMessage) (*SSHClient, error) {
 	}
 
 	// Request pseudo-terminal for interactive SSH session
-	if err := sshclient.session.RequestPty("xterm", 80, 80, ssh.TerminalModes{}); err != nil {
+	if err := sshclient.session.RequestPty("xterm", 40, 132, ssh.TerminalModes{}); err != nil {
 		klog.V(4).Infof("Error requesting PTY: %v", err)
 		return nil, fmt.Errorf("Error requesting PTY:%v", err)
 	}
