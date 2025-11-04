@@ -196,7 +196,7 @@ func (server *TunnelServer) proxy(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	sessionId := server.sessionIDGenarator()
+	sessionId := server.sessionIDGenerator()
 	upClient := &Client{
 		Socket:   c,
 		Mu:       sync.Mutex{},

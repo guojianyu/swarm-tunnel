@@ -137,7 +137,7 @@ func (s *Session) GetAnnotaion(annotation string) string {
 	return s.Annotation
 }
 
-func (server *TunnelServer) sessionIDGenarator() string {
+func (server *TunnelServer) sessionIDGenerator() string {
 	return uuid.NewV4().String()
 
 }
