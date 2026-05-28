@@ -131,7 +131,7 @@
     terminal.open(terminalContainer);
     terminal.resize(132, 40);
 
-    const socket = new WebSocket("ws://localhost:8080/proxy?clientid=guojy&address=ssh://192.168.0.140:22");
+    const socket = new WebSocket("ws://localhost:8080/proxy?clientid=guojy&address=ssh://10.2.0.48:22");
 
     document.getElementById("yes-btn").addEventListener("click", () => {
       document.getElementById("login-modal").style.display = "none";
@@ -154,8 +154,26 @@
         alert("Username and Password are required!");
       }
     });
+    const decoder = new TextDecoder("utf-8");
 
-    socket.onmessage = event => terminal.write(event.data);
+socket.onmessage = (event) => {
+    let data = event.data;
+
+    if (typeof data === "string") {
+        terminal.write(data);
+        return;
+    }
+
+    if (data instanceof ArrayBuffer) {
+        terminal.write(decoder.decode(data));
+        return;
+    }
+
+    if (data instanceof Blob) {
+        data.text().then(t => terminal.write(t));
+    }
+};
+    // socket.onmessage = event => terminal.write(event.data);
     terminal.onData(data => socket.send(data));
     socket.onclose = () => terminal.write("\r\nConnection closed.\r\n");
     socket.onerror = () => terminal.write("\r\nError connecting to SSH.\r\n");

@@ -327,7 +327,7 @@ func (agent *TunnelAgent) writeServerMessage(ctx context.Context) error {
 				klog.Errorf("marshal error: %v, message content: %v", err.Error(), message)
 				continue
 			}
-			err = agent.hub.c.WsLockWriteMessage(tunnelPkg.TextMessage, message)
+			err = agent.hub.c.WsLockWriteMessage(tunnelPkg.BinaryMessage, message)
 			if err != nil {
 				klog.Errorf("The client failed to write message to the server. %v:", err.Error())
 				return err

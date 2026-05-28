@@ -509,7 +509,7 @@ func (s *Session) writeUpStreamPump(hub *Hub) {
 			case tunnelPkg.PingMessage:
 				continue
 			}
-			err := s.upAgent().WsLockWriteMessage(tunnelPkg.TextMessage, tunnelMessage.Payload)
+			err := s.upAgent().WsLockWriteMessage(tunnelPkg.BinaryMessage, tunnelMessage.Payload)
 			if err != nil {
 				klog.V(4).Infof("Session[%s] is closed", tunnelMessage.SessionID)
 				return
