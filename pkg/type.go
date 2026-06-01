@@ -125,9 +125,10 @@ type SSH struct {
 }
 
 type Container struct {
-	NameSpace string `json:"namespace,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
 	Pod       string `json:"pod,omitempty"`
 	Container string `json:"container,omitempty"`
+	Command   string `json:"command,omitempty"`
 }
 
 type VM struct {

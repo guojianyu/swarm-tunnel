@@ -28,16 +28,18 @@ func main() {
 	flag.Set("v", "3")
 	flag.Parse()
 	clientId := "guojy"
-	//addr := "ws://39.105.15.153:8080/register"
 	addr := "ws://localhost:8080/register"
-	//addr := "wss://localhost:8080/register"
 	tunnelAgent := client.NewTunnelAgent(addr, clientId)
+
+	//enable kubeconfig path setting if use pod ssh and logs
+	//agent run in k8s,do not need to set the kubeconfig path
+	tunnelAgent.Kubeconfig("./kubeconfig")
+
 	// {
 	// 	ca := "D:/workspace/go/src/test/multi-cluster/cert/ca_cert.pem"
 	// 	cert := "D:/workspace/go/src/test/multi-cluster/cert/client_cert.pem"
 	// 	key := "D:/workspace/go/src/test/multi-cluster/cert/client_key.pem"
 	// 	tunnelAgent.WithTLS(ca, cert, key)
-
 	// }
 
 	tunnelAgent.Run()

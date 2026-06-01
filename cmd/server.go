@@ -27,7 +27,7 @@ import (
 
 func main() {
 	klog.InitFlags(nil)
-	flag.Set("v", "4")
+	flag.Set("v", "3")
 	flag.Parse()
 	tunnelServer := server.NewTunnelServer(":8080")
 

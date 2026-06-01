@@ -32,6 +32,7 @@ import (
 	"k8s.io/klog"
 
 	"github.com/gorilla/websocket"
+	downStream "github.com/guojianyu/swarm-tunnel/pkg/client/downstream"
 )
 
 type Client tunnelPkg.Client
@@ -78,6 +79,11 @@ func (agent *TunnelAgent) WithTLS(cafile, certFile, keyFile string) {
 	agent.webserver.CertFile = certFile
 	agent.webserver.KeyFile = keyFile
 }
+
+func (agent *TunnelAgent) Kubeconfig(kubeconfigPath string) {
+	downStream.Kubeconfig = kubeconfigPath
+}
+
 func NewHub() *Hub {
 	return &Hub{
 		SessionRegister:   make(chan *Session),

@@ -139,7 +139,7 @@ func (agent *TunnelAgent) Processor(tunnelMessage *tunnelPkg.TunnelMessage, ctx 
 		*/
 		downstream, err := downStream.NewDownStream(tunnelMessage)
 		if err != nil {
-			klog.Warning("connect error:%v", err)
+			klog.Warning("connect error:", err)
 			session.Annotation = err.Error()
 			agent.hub.SessionUnregister <- session
 			return
@@ -151,7 +151,7 @@ func (agent *TunnelAgent) Processor(tunnelMessage *tunnelPkg.TunnelMessage, ctx 
 				for {
 					select {
 					case <-ctx.Done():
-						klog.Infof("Session[%s] downstream read exit", session.SessionID)
+						klog.V(4).Infof("Session[%s] downstream read exit", session.SessionID)
 						return nil
 					case <-session.Context.Done():
 						return nil
@@ -179,7 +179,7 @@ func (agent *TunnelAgent) Processor(tunnelMessage *tunnelPkg.TunnelMessage, ctx 
 				for {
 					select {
 					case <-ctx.Done():
-						klog.Infof("Session[%s] downstream write exit", session.SessionID)
+						klog.V(4).Infof("Session[%s] downstream write exit", session.SessionID)
 						return nil
 					case <-session.Context.Done():
 						return nil
@@ -216,7 +216,7 @@ func (agent *TunnelAgent) Processor(tunnelMessage *tunnelPkg.TunnelMessage, ctx 
 			break
 		}
 	case tunnelPkg.CloseMessage:
-		klog.Infof("close message: %v", tunnelMessage)
+		klog.V(4).Infof("close message: %v", tunnelMessage)
 		s, ok := agent.hub.Sessions.Load(tunnelMessage.SessionID)
 		if !ok {
 			klog.Errorf("Do not find session:%s", tunnelMessage.SessionID)

@@ -131,7 +131,7 @@
     terminal.open(terminalContainer);
     terminal.resize(132, 40);
 
-    const socket = new WebSocket("ws://localhost:8080/proxy?clientid=guojy&address=ssh://10.2.0.48:22");
+    const socket = new WebSocket("ws://10.2.0.24:30888/proxy?clientid=guojy&address=ssh://10.2.0.48:22");
 
     document.getElementById("yes-btn").addEventListener("click", () => {
       document.getElementById("login-modal").style.display = "none";

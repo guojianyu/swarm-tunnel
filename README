@@ -1,5 +1,5 @@
-http://127.0.0.1:8080/proxy?clientid=test&address=ws://127.0.0.1:9090/ws
-http://127.0.0.1:8080/proxy?clientid=test&address=ssh://192.168.0.140:22
+ws://127.0.0.1:8080/proxy?clientid=test&address=ws://127.0.0.1:9090/ws
+ws://127.0.0.1:8080/proxy?clientid=test&address=ssh://192.168.0.140:22
 http://127.0.0.1:8080/proxy?clientid=test&address=http://127.0.0.1:8060/hello
 
 

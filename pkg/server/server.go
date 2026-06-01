@@ -302,6 +302,21 @@ func (server *TunnelServer) proxy(w http.ResponseWriter, r *http.Request) {
 		ws.Host = host
 		ws.Path = path
 		tunnelMessage.Ws = ws
+	case tunnelPkg.ProtocolLogs:
+		c := new(tunnelPkg.Container)
+		c.Namespace = query.Get("namespace")
+		c.Pod = query.Get("pod")
+		c.Container = query.Get("container")
+		tunnelMessage.Logs = c
+		klog.V(5).Infof("logs info: %v", c)
+	case tunnelPkg.ProtocolExec:
+		c := new(tunnelPkg.Container)
+		c.Namespace = query.Get("namespace")
+		c.Pod = query.Get("pod")
+		c.Container = query.Get("container")
+		c.Command = query.Get("command")
+		tunnelMessage.Exec = c
+		klog.V(5).Infof("exec info: %v", c)
 	default:
 		ws := new(tunnelPkg.Ws)
 		ws.Host = host

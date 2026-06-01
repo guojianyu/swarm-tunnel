@@ -16,7 +16,16 @@ limitations under the License.
 package downstream
 
 import (
+	"fmt"
+
 	tunnelPkg "github.com/guojianyu/swarm-tunnel/pkg"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+)
+
+var (
+	Kubeconfig = ""
 )
 
 /*
@@ -34,12 +43,34 @@ type DownStream interface {
 
 // Extend the downstream protocol
 func NewDownStream(tunnelMessage *tunnelPkg.TunnelMessage) (downstream DownStream, err error) {
-	if tunnelMessage.Protocol == tunnelPkg.ProtocolWebsocket {
+	switch tunnelMessage.Protocol {
+	case tunnelPkg.ProtocolWebsocket:
 		downstream, err = NewWsClient(tunnelMessage)
-
-	} else if tunnelMessage.Protocol == tunnelPkg.ProtocolSSH {
+		return
+	case tunnelPkg.ProtocolSSH:
 		downstream, err = NewSSHClient(tunnelMessage)
-
+		return
+	case tunnelPkg.ProtocolLogs:
+		downstream, err = NewLogsClient(tunnelMessage)
+		return
+	case tunnelPkg.ProtocolExec:
+		downstream, err = NewExecClient(tunnelMessage)
+		return
+	default:
+		return nil, fmt.Errorf("do not support %v protocol!", tunnelMessage.Protocol)
 	}
-	return
+}
+
+func createClientset() (*rest.Config, *kubernetes.Clientset, error) {
+	var cfg *rest.Config
+	var err error
+	if Kubeconfig != "" {
+		cfg, err = clientcmd.BuildConfigFromFlags("", Kubeconfig)
+	} else {
+		cfg, err = rest.InClusterConfig()
+	}
+	if err != nil {
+		return cfg, nil, err
+	}
+	return cfg, kubernetes.NewForConfigOrDie(cfg), nil
 }

@@ -52,7 +52,7 @@ func (hub *Hub) Run() {
 			klog.V(4).Infof("Agent[%s] is disconnected.", client.ClientID)
 		case session := <-hub.SessionRegister:
 			hub.Sessions.Store(session.SessionID, session)
-			info := fmt.Sprintf("The session[%s] with the agent[%s] is %s ", session.SessionID, session.downAgent().ClientID, session.GetStatus())
+			info := fmt.Sprintf("The session[%s] with the agent[%s] is %s \n", session.SessionID, session.downAgent().ClientID, session.GetStatus())
 			klog.V(4).Infof(info)
 			if hub.registerSessionCallback != nil && session.GetStatus() == tunnelPkg.SessionConnected {
 				hub.registerSessionCallback(session.SessionID)
@@ -65,7 +65,7 @@ func (hub *Hub) Run() {
 				continue
 			}
 			hub.Sessions.Delete(session.SessionID)
-			klog.V(4).Infof("The protocol[%s] session[%s] with the agent[%s] is removed %v", session.Protocol, session.SessionID, session.downAgent().ClientID, session.Annotation)
+			klog.V(4).Infof("The protocol[%s] session[%s] with the agent[%s] is removed %v\n", session.Protocol, session.SessionID, session.downAgent().ClientID, session.Annotation)
 			if session.Protocol == tunnelPkg.ProtocolHttp {
 				continue
 			}
